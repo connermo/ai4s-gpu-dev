@@ -1,0 +1,298 @@
+# GPU Docker 开发环境
+
+一个支持GPU的独立Docker开发环境，集成了VSCode Server、Jupyter Lab、TensorBoard和SSH服务，支持多用户和环境变量配置。
+
+## 🚀 特性
+
+- **GPU支持**: 基于NVIDIA CUDA 11.8镜像，支持GPU加速
+- **多服务集成**: VSCode Server + Jupyter Lab + TensorBoard + SSH
+- **多用户支持**: 通过环境变量配置不同用户
+- **灵活配置**: 支持自定义用户ID、密码、工作目录等
+- **持久化存储**: 用户数据持久化保存
+- **开箱即用**: 预装深度学习常用库
+
+## 📦 预装软件
+
+- **开发环境**: VSCode Server, SSH, Git, Vim
+- **Python生态**: Python 3.12, Miniconda, Jupyter Lab
+- **深度学习**: PyTorch (CUDA 12.4), TensorBoard, Transformers, DGL, PyTorch Geometric
+- **科学计算**: NumPy, SciPy, SymPy, JAX, Numba, Dask
+- **数据科学**: Pandas, Polars, Scikit-learn, XGBoost, LightGBM, Statsmodels
+- **可视化**: Matplotlib, Seaborn, Plotly, Bokeh, Mayavi, VTK, py3Dmol
+- **化学信息学**: RDKit, DeepChem, ASE, Pymatgen, OpenBabel
+- **生物信息学**: BioPython, Scanpy, AnnData, MDTraj
+- **优化工具**: CVXPY, Ray
+- **专业工具**: Mendeleev, PeriodTable, Pint (单位转换)
+- **其他**: OpenCV, W&B, Accelerate, Diffusers
+
+## 🛠 快速开始
+
+### 方法1: 使用便捷脚本（推荐）
+
+```bash
+# 给脚本执行权限
+chmod +x run-container.sh
+
+# 启动默认用户环境
+./run-container.sh
+
+# 启动自定义用户环境
+./run-container.sh myuser mypassword ./my-workspace 90
+```
+
+### 方法2: 使用Docker命令
+
+```bash
+# 构建镜像
+docker build -t gpu-dev-env:latest .
+
+# 运行容器
+docker run -d \
+    --name gpu-dev-myuser \
+    --gpus all \
+    -p 8080:8080 \
+    -p 8888:8888 \
+    -p 6006:6006 \
+    -p 2222:22 \
+    -e DEV_USER=myuser \
+    -e DEV_PASSWORD=mypassword \
+    -e DEV_UID=$(id -u) \
+    -e DEV_GID=$(id -g) \
+    -v ./workspace:/home/myuser/workspace:rw \
+    -v ./shared:/shared:ro \
+    --shm-size=2g \
+    gpu-dev-env:latest
+```
+
+### 方法3: 使用Docker Compose（多用户）
+
+```bash
+# 启动多用户环境
+docker-compose up -d
+
+# 停止环境
+docker-compose down
+```
+
+## 🌍 访问服务
+
+启动后可以通过以下方式访问各项服务：
+
+| 服务 | 默认端口 | 访问地址 |
+|------|---------|----------|
+| VSCode Server | 8080 | http://localhost:8080 |
+| Jupyter Lab | 8888 | http://localhost:8888 |
+| TensorBoard | 6006 | http://localhost:6006 |
+| SSH | 22 | `ssh -p 22 用户名@localhost` |
+
+## ⚙️ 环境变量配置
+
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `DEV_USER` | devuser | 容器内用户名 |
+| `DEV_PASSWORD` | changeme | 用户密码（用于VSCode、Jupyter、SSH） |
+| `DEV_UID` | 1000 | 用户UID（建议设置为宿主机用户UID） |
+| `DEV_GID` | 1000 | 用户GID（建议设置为宿主机用户GID） |
+| `ENABLE_JUPYTER` | true | 是否启用Jupyter Lab |
+| `ENABLE_TENSORBOARD` | true | 是否启用TensorBoard |
+| `WORKSPACE_DIR` | /home/用户名/workspace | 工作目录路径 |
+
+## 📁 目录结构
+
+```
+gpu-docker/
+├── Dockerfile              # 主镜像定义
+├── docker-compose.yml      # 多用户编排文件
+├── run-container.sh        # 快速启动脚本
+├── entrypoint.sh           # 容器入口脚本
+├── supervisord.conf        # 服务管理配置
+├── config/                 # 配置文件目录
+│   └── code-server/
+│       └── config.yaml     # VSCode Server配置
+├── scripts/                # 辅助脚本
+│   └── start-services.sh   # 服务启动脚本
+├── data/                   # 用户数据目录（自动创建）
+│   ├── user1/             # 用户1工作空间
+│   └── user2/             # 用户2工作空间
+└── shared/                # 共享数据目录
+```
+
+## 🔧 使用示例
+
+### 单用户快速启动
+
+```bash
+# 启动用户alice的开发环境，端口前缀90
+./run-container.sh alice password123 ./alice-workspace 90
+
+# 访问地址：
+# VSCode: http://localhost:9080
+# Jupyter: http://localhost:9088
+# TensorBoard: http://localhost:9006
+# SSH: ssh -p 9022 alice@localhost
+```
+
+### 多用户并行使用
+
+```bash
+# 启动用户1
+./run-container.sh user1 pass1 ./data/user1 80
+
+# 启动用户2  
+./run-container.sh user2 pass2 ./data/user2 81
+
+# 用户1访问：http://localhost:8080
+# 用户2访问：http://localhost:8180
+```
+
+### GPU测试
+
+在Jupyter或VSCode中运行以下代码测试GPU：
+
+```python
+import torch
+import numpy as np
+import sys
+
+# 检查Python和CUDA版本
+print(f"Python version: {sys.version}")
+print(f"PyTorch version: {torch.__version__}")
+print(f"CUDA available: {torch.cuda.is_available()}")
+print(f"CUDA device count: {torch.cuda.device_count()}")
+if torch.cuda.is_available():
+    print(f"Current device: {torch.cuda.current_device()}")
+    print(f"Device name: {torch.cuda.get_device_name()}")
+    print(f"CUDA version: {torch.version.cuda}")
+
+# 创建GPU张量进行测试
+if torch.cuda.is_available():
+    x = torch.randn(1000, 1000).cuda()
+    y = torch.randn(1000, 1000).cuda()
+    z = torch.mm(x, y)
+    print(f"GPU calculation result shape: {z.shape}")
+    print("GPU test completed successfully!")
+```
+
+### AI for Science工具测试
+
+```python
+# 测试科学计算工具
+import numpy as np
+import scipy
+import jax.numpy as jnp
+from jax import grad, jit
+import sympy as sp
+
+print("=== 基础科学计算 ===")
+print(f"NumPy version: {np.__version__}")
+print(f"SciPy version: {scipy.__version__}")
+
+# 测试JAX
+@jit
+def selu(x, alpha=1.67, lmbda=1.05):
+    return lmbda * jnp.where(x > 0, x, alpha * jnp.exp(x) - alpha)
+
+x = jnp.arange(1000000.0)
+result = selu(x)
+print(f"JAX computation completed: {result.shape}")
+
+# 测试化学信息学
+print("\n=== 化学信息学 ===")
+try:
+    from rdkit import Chem
+    from rdkit.Chem import Descriptors
+    mol = Chem.MolFromSmiles('CCO')  # 乙醇
+    print(f"分子量: {Descriptors.MolWt(mol):.2f}")
+    print("RDKit工作正常")
+except ImportError:
+    print("RDKit未正确安装")
+
+# 测试材料科学
+print("\n=== 材料科学 ===")
+try:
+    from pymatgen.core import Structure, Lattice
+    from ase import Atoms
+    print("ASE和Pymatgen工作正常")
+except ImportError:
+    print("材料科学工具未正确安装")
+
+# 测试图神经网络
+print("\n=== 图神经网络 ===")
+try:
+    import torch_geometric
+    import dgl
+    print(f"PyTorch Geometric version: {torch_geometric.__version__}")
+    print(f"DGL version: {dgl.__version__}")
+except ImportError:
+    print("图神经网络库未正确安装")
+
+# 测试生物信息学
+print("\n=== 生物信息学 ===")
+try:
+    from Bio.Seq import Seq
+    dna = Seq("AGTACACTGGT")
+    print(f"DNA序列: {dna}")
+    print(f"转录RNA: {dna.transcribe()}")
+    print("BioPython工作正常")
+except ImportError:
+    print("BioPython未正确安装")
+
+print("\n=== 测试完成 ===")
+```
+
+## 🛡️ 安全注意事项
+
+1. **密码安全**: 请修改默认密码，使用强密码
+2. **端口安全**: 在生产环境中，建议使用防火墙限制端口访问
+3. **数据权限**: 确保挂载目录的权限设置正确
+4. **网络安全**: 在公网环境中使用时，建议配置SSL证书
+
+## 🔍 故障排除
+
+### 容器无法启动
+
+```bash
+# 查看容器日志
+docker logs gpu-dev-用户名
+
+# 检查GPU驱动
+nvidia-smi
+
+# 检查Docker GPU支持
+docker run --rm --gpus all nvidia/cuda:11.8-base nvidia-smi
+```
+
+### 服务无法访问
+
+```bash
+# 检查端口占用
+netstat -tlnp | grep :8080
+
+# 进入容器调试
+docker exec -it gpu-dev-用户名 bash
+
+# 重启服务
+docker exec gpu-dev-用户名 supervisorctl restart all
+```
+
+### 权限问题
+
+```bash
+# 修复工作目录权限
+sudo chown -R $(id -u):$(id -g) ./workspace
+```
+
+## 📝 开发建议
+
+1. **工作目录**: 将代码放在挂载的工作目录中，确保数据持久化
+2. **GPU内存**: 使用TensorBoard监控GPU使用情况
+3. **Jupyter插件**: 可以安装额外的Jupyter扩展
+4. **VSCode插件**: 在VSCode中安装Python、Docker等扩展
+
+## 🤝 贡献
+
+欢迎提交Issue和Pull Request来改进这个项目！
+
+## �� 许可证
+
+MIT License 

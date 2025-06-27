@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # 用户1的开发环境
+  gpu-dev-user1:
+    build: .
+    container_name: gpu-dev-user1
+    hostname: gpu-dev-user1
+    ports:
+      - "8080:8080"   # code-server
+      - "8888:8888"   # jupyter
+      - "6006:6006"   # tensorboard
+      - "2201:22"     # ssh
+    environment:
+      - DEV_USER=user1
+      - DEV_PASSWORD=password123
+      - DEV_UID=1001
+      - DEV_GID=1001
+      - ENABLE_JUPYTER=true
+      - ENABLE_TENSORBOARD=true
+      - WORKSPACE_DIR=/home/user1/workspace
+    volumes:
+      - ./data/user1:/home/user1/workspace:rw
+      - ./shared:/shared:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  # 用户2的开发环境
+  gpu-dev-user2:
+    build: .
+    container_name: gpu-dev-user2
+    hostname: gpu-dev-user2
+    ports:
+      - "8081:8080"   # code-server
+      - "8889:8888"   # jupyter
+      - "6007:6006"   # tensorboard
+      - "2202:22"     # ssh
+    environment:
+      - DEV_USER=user2
+      - DEV_PASSWORD=password456
+      - DEV_UID=1002
+      - DEV_GID=1002
+      - ENABLE_JUPYTER=true
+      - ENABLE_TENSORBOARD=false
+      - WORKSPACE_DIR=/home/user2/workspace
+    volumes:
+      - ./data/user2:/home/user2/workspace:rw
+      - ./shared:/shared:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  user1_data:
+    driver: local
+  user2_data:
+    driver: local 
