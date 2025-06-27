@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 libxext6 libsm6 libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 Miniconda
+# 安装 Miniconda 并配置mamba加速依赖解析
 ENV CONDA_DIR=/opt/conda
 ENV PATH=$CONDA_DIR/bin:$PATH
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
@@ -23,8 +23,8 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     rm /tmp/miniconda.sh && \
     conda clean -tip && \
     conda config --set always_yes yes --set changeps1 no && \
-    conda update -q conda && \
-    conda install python=3.12 && \
+    conda config --set solver libmamba && \
+    conda install -c conda-forge mamba python=3.12 && \
     conda clean -afy
 
 # 配置时区和语言环境
@@ -47,23 +47,33 @@ RUN useradd -m -s /bin/bash -u 1000 devuser && \
 # 安装 code-server
 RUN curl -fsSL https://code-server.dev/install.sh | sh
 
-# 安装科学计算基础库
-RUN conda install -c conda-forge \
-    jupyter jupyterlab \
-    pandas numpy scipy sympy \
-    matplotlib seaborn plotly bokeh \
-    scikit-learn scikit-image \
-    ipywidgets ipykernel \
-    opencv \
-    jax jaxlib \
-    numba \
-    h5py netcdf4 zarr dask \
-    networkx \
-    openbabel \
+# 分批使用mamba安装科学计算库（减少单次依赖解析复杂度）
+# 核心数值计算库
+RUN mamba install -c conda-forge \
+    numpy scipy pandas sympy \
     && conda clean -afy
 
-# 安装深度学习框架
-RUN conda install -c pytorch pytorch torchvision torchaudio pytorch-cuda=12.4 && \
+# Jupyter和可视化工具
+RUN mamba install -c conda-forge \
+    jupyter jupyterlab \
+    matplotlib seaborn plotly bokeh \
+    ipywidgets ipykernel \
+    && conda clean -afy
+
+# 机器学习和图像处理
+RUN mamba install -c conda-forge \
+    scikit-learn scikit-image \
+    opencv numba \
+    && conda clean -afy
+
+# 数据处理和网络分析
+RUN mamba install -c conda-forge \
+    h5py netcdf4 zarr dask \
+    networkx openbabel \
+    && conda clean -afy
+
+# 使用mamba安装深度学习框架
+RUN mamba install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia && \
     conda clean -afy
 
 # 安装AI for Science专用工具
@@ -83,10 +93,10 @@ RUN pip install --no-cache-dir \
     # 物理/材料科学
     ase \
     pymatgen \
-    # 生物信息学
-    biopython \
-    scanpy \
-    anndata \
+    # 生物信息学 (已移除以减少安装时间)
+    # biopython \
+    # scanpy \
+    # anndata \
     # 分子动力学和模拟
     mdtraj \
     # 3D可视化
