@@ -72,6 +72,10 @@ RUN mamba install -c conda-forge \
     networkx openbabel \
     && conda clean -afy
 
+# 化学信息学工具
+RUN mamba install -c conda-forge rdkit \
+    && conda clean -afy
+
 # 使用mamba安装深度学习框架
 RUN mamba install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia && \
     conda clean -afy
@@ -88,7 +92,6 @@ RUN pip install --no-cache-dir \
     torch-geometric \
     dgl \
     # 化学信息学
-    rdkit-pypi \
     deepchem \
     # 物理/材料科学
     ase \
