@@ -1,0 +1,106 @@
+# 多阶段构建 - 基础环境
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04 AS base
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=Asia/Shanghai \
+    CONDA_DIR=/opt/conda \
+    PATH=/opt/conda/bin:$PATH
+
+# 一次性安装所有系统依赖
+RUN apt-get update && apt-get install -y \
+    curl wget git vim sudo nodejs npm supervisor openssh-server \
+    tzdata locales build-essential cmake bzip2 ca-certificates \
+    libglib2.0-0 libxext6 libsm6 libxrender1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    && locale-gen en_US.UTF-8
+
+# Python环境构建阶段
+FROM base AS python-env
+
+# 安装Miniconda和基础Python环境
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh \
+    && bash /tmp/miniconda.sh -b -p $CONDA_DIR \
+    && rm /tmp/miniconda.sh \
+    && conda clean -tip \
+    && conda config --set always_yes yes --set changeps1 no --set solver libmamba \
+    && conda install -c conda-forge mamba python=3.12
+
+# 科学计算环境
+FROM python-env AS scientific-env
+
+# 一次性安装所有conda依赖
+RUN mamba install -c conda-forge \
+    numpy scipy pandas sympy matplotlib seaborn plotly bokeh \
+    jupyter jupyterlab ipywidgets ipykernel \
+    scikit-learn scikit-image opencv numba h5py netcdf4 zarr dask \
+    networkx openbabel rdkit \
+    && conda clean -afy
+
+# 深度学习环境
+FROM scientific-env AS ml-env
+
+RUN mamba install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia \
+    && conda clean -afy
+
+# 一次性安装所有pip依赖
+RUN pip install --no-cache-dir \
+    tensorboard transformers datasets accelerate diffusers wandb \
+    torch-geometric dgl deepchem ase pymatgen mdtraj py3Dmol \
+    cvxpy xgboost lightgbm polars mayavi vtk statsmodels \
+    ray[default] mendeleev periodictable pint
+
+# 最终镜像
+FROM ml-env AS final
+
+# SSH和用户配置
+RUN mkdir /var/run/sshd \
+    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && useradd -m -s /bin/bash -u 1000 devuser \
+    && echo "devuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# 安装code-server
+RUN curl -fsSL https://code-server.dev/install.sh | sh
+
+USER devuser
+WORKDIR /home/devuser
+
+# 用户环境配置
+RUN conda init bash \
+    && echo "conda activate base" >> ~/.bashrc \
+    && mkdir -p ~/.config/code-server ~/.jupyter ~/.ssh \
+    workspace/{projects,data,models,notebooks,tensorboard_logs} \
+    ~/.local/share/code-server/User \
+    && ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N "" \
+    && echo '{"markdown.preview.openMarkdownLinks": "inPreview","markdown.preview.scrollPreviewWithEditor": true,"markdown.preview.markEditorSelection": true,"workbench.editorAssociations": {"*.md": "default"},"security.workspace.trust.enabled": false}' > ~/.local/share/code-server/User/settings.json
+
+# Jupyter配置
+RUN jupyter lab --generate-config \
+    && echo "c.ServerApp.ip = '0.0.0.0'" >> ~/.jupyter/jupyter_lab_config.py \
+    && echo "c.ServerApp.port = 8888" >> ~/.jupyter/jupyter_lab_config.py \
+    && echo "c.ServerApp.open_browser = False" >> ~/.jupyter/jupyter_lab_config.py \
+    && echo "c.ServerApp.token = ''" >> ~/.jupyter/jupyter_lab_config.py \
+    && echo "c.ServerApp.password = ''" >> ~/.jupyter/jupyter_lab_config.py \
+    && echo "c.ServerApp.allow_origin = '*'" >> ~/.jupyter/jupyter_lab_config.py \
+    && echo "c.ServerApp.allow_root = True" >> ~/.jupyter/jupyter_lab_config.py
+
+USER root
+
+# 复制配置文件
+COPY --chown=devuser:devuser config/ /home/devuser/.config/
+COPY --chown=devuser:devuser scripts/ /home/devuser/scripts/
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY entrypoint.sh /usr/local/bin/
+
+# VSDA占位符和最终设置
+RUN mkdir -p /usr/lib/code-server/lib/vscode/out/vs/workbench/services/extensions/worker \
+    && echo "// VSDA placeholder file" > /usr/lib/code-server/lib/vscode/out/vs/workbench/services/extensions/worker/vsda.js \
+    && echo -e '\x00asm\x01\x00\x00\x00' > /usr/lib/code-server/lib/vscode/out/vs/workbench/services/extensions/worker/vsda_bg.wasm \
+    && chmod +x /usr/local/bin/entrypoint.sh /home/devuser/scripts/*.sh
+
+EXPOSE 8080 8888 6006 22
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["supervisord"] 
