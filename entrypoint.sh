@@ -22,6 +22,27 @@ if id "$DEV_USER" &>/dev/null; then
     groupmod -g $DEV_GID $DEV_USER
 else
     echo "Creating user $DEV_USER..."
+    
+    # 检查并分配可用的 UID
+    if id -u $DEV_UID &>/dev/null; then
+        echo "UID $DEV_UID is already in use, finding next available UID..."
+        ORIGINAL_UID=$DEV_UID
+        while id -u $DEV_UID &>/dev/null; do
+            DEV_UID=$((DEV_UID+1))
+        done
+        echo "Using UID $DEV_UID instead of $ORIGINAL_UID"
+    fi
+    
+    # 检查并分配可用的 GID
+    if getent group $DEV_GID &>/dev/null; then
+        echo "GID $DEV_GID is already in use, finding next available GID..."
+        ORIGINAL_GID=$DEV_GID
+        while getent group $DEV_GID &>/dev/null; do
+            DEV_GID=$((DEV_GID+1))
+        done
+        echo "Using GID $DEV_GID instead of $ORIGINAL_GID"
+    fi
+    
     getent group $DEV_USER >/dev/null || groupadd -g $DEV_GID $DEV_USER
     useradd -m -s /bin/bash -u $DEV_UID -g $DEV_GID $DEV_USER
     echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
@@ -67,6 +88,8 @@ echo ""
 echo "Login credentials:"
 echo "  Username: $DEV_USER"
 echo "  Password: $DEV_PASSWORD"
+echo "  Final UID: $DEV_UID"
+echo "  Final GID: $DEV_GID"
 echo "==============================================="
 
 # 执行传入的命令
