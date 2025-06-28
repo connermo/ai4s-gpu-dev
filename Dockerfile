@@ -139,6 +139,10 @@ RUN mkdir -p ~/.config/code-server ~/.jupyter ~/.ssh \
 # 生成SSH密钥
 RUN ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
 
+# 创建优化的VSCode用户设置
+RUN mkdir -p ~/.local/share/code-server/User
+RUN echo '{"markdown.preview.openMarkdownLinks": "inPreview","markdown.preview.scrollPreviewWithEditor": true,"markdown.preview.markEditorSelection": true,"workbench.editorAssociations": {"*.md": "default"},"security.workspace.trust.enabled": false}' > ~/.local/share/code-server/User/settings.json
+
 # 配置 Jupyter
 RUN jupyter lab --generate-config && \
     echo "c.ServerApp.ip = '0.0.0.0'" >> ~/.jupyter/jupyter_lab_config.py && \
@@ -157,7 +161,14 @@ COPY --chown=devuser:devuser scripts/ /home/devuser/scripts/
 USER root
 
 # 复制supervisor配置
-COPY supervisord.conf /etc/supervisor/conf.d/
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# 创建VSDA占位符文件以防止404错误
+RUN mkdir -p /usr/lib/code-server/lib/vscode/out/vs/workbench/services/extensions/worker
+RUN echo "// VSDA placeholder file" > /usr/lib/code-server/lib/vscode/out/vs/workbench/services/extensions/worker/vsda.js
+RUN echo -e '\x00asm\x01\x00\x00\x00' > /usr/lib/code-server/lib/vscode/out/vs/workbench/services/extensions/worker/vsda_bg.wasm
+
+# 复制entrypoint脚本
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh /home/devuser/scripts/*.sh
 

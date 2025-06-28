@@ -4,6 +4,7 @@ set -e
 # 设置默认环境变量
 export DEV_USER=${DEV_USER:-devuser}
 export DEV_PASSWORD=${DEV_PASSWORD:-changeme}
+export PASSWORD=${PASSWORD:-$DEV_PASSWORD}
 export DEV_UID=${DEV_UID:-1000}
 export DEV_GID=${DEV_GID:-1000}
 export ENABLE_JUPYTER=${ENABLE_JUPYTER:-true}
@@ -66,6 +67,11 @@ if [ "$DEV_USER" != "devuser" ]; then
     # 确保权限正确
     chown -R $DEV_UID:$DEV_GID /home/$DEV_USER
 fi
+
+# 确保用户设置目录存在并优化VSCode配置
+mkdir -p /home/$DEV_USER/.local/share/code-server/User
+echo '{"markdown.preview.openMarkdownLinks": "inPreview","markdown.preview.scrollPreviewWithEditor": true,"markdown.preview.markEditorSelection": true,"workbench.editorAssociations": {"*.md": "default"},"security.workspace.trust.enabled": false}' > /home/$DEV_USER/.local/share/code-server/User/settings.json
+chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/.local
 
 # 确保工作目录存在并设置权限
 mkdir -p $WORKSPACE_DIR/{projects,data,models,notebooks,tensorboard_logs}

@@ -91,6 +91,7 @@ docker run -d \
     -p "$SSH_PORT:22" \
     -e "DEV_USER=$DEV_USER" \
     -e "DEV_PASSWORD=$DEV_PASSWORD" \
+    -e "PASSWORD=$DEV_PASSWORD" \
     -e "DEV_UID=$CURRENT_UID" \
     -e "DEV_GID=$CURRENT_GID" \
     -e "ENABLE_JUPYTER=true" \
