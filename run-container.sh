@@ -27,6 +27,30 @@ SSH_PORT="${PORT_PREFIX}22"
 CURRENT_UID=$(id -u)
 CURRENT_GID=$(id -g)
 
+# 获取宿主机IP地址
+# 优先使用hostname -I获取第一个非回环IP地址
+HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}' 2>/dev/null)
+
+# 如果hostname -I失败，尝试从网络接口获取IP
+if [ -z "$HOST_IP" ]; then
+    # 获取默认路由的网络接口，然后获取该接口的IP
+    DEFAULT_INTERFACE=$(ip route | grep '^default' | awk '{print $5}' | head -n1 2>/dev/null)
+    if [ -n "$DEFAULT_INTERFACE" ]; then
+        HOST_IP=$(ip addr show "$DEFAULT_INTERFACE" 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d'/' -f1 | head -n1)
+    fi
+fi
+
+# 如果还是获取不到，尝试获取第一个非回环的网络接口IP
+if [ -z "$HOST_IP" ]; then
+    HOST_IP=$(ip addr show 2>/dev/null | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d'/' -f1 | head -n1)
+fi
+
+# 最后的备选方案使用localhost
+if [ -z "$HOST_IP" ]; then
+    HOST_IP="localhost"
+    echo "警告: 无法获取宿主机IP地址，使用localhost"
+fi
+
 # 创建工作目录
 mkdir -p "$WORKSPACE_DIR"/{projects,data,models,notebooks,tensorboard_logs}
 mkdir -p ./shared
@@ -37,11 +61,12 @@ echo "==============================================="
 echo "用户名: $DEV_USER"
 echo "密码: $DEV_PASSWORD"
 echo "工作目录: $WORKSPACE_DIR"
+echo "宿主机IP: $HOST_IP"
 echo "端口配置:"
-echo "  VSCode:      http://localhost:$CODE_SERVER_PORT"
-echo "  Jupyter:     http://localhost:$JUPYTER_PORT"
-echo "  TensorBoard: http://localhost:$TENSORBOARD_PORT"
-echo "  SSH:         ssh -p $SSH_PORT $DEV_USER@localhost"
+echo "  VSCode:      http://$HOST_IP:$CODE_SERVER_PORT"
+echo "  Jupyter:     http://$HOST_IP:$JUPYTER_PORT"
+echo "  TensorBoard: http://$HOST_IP:$TENSORBOARD_PORT"
+echo "  SSH:         ssh -p $SSH_PORT $DEV_USER@$HOST_IP"
 echo "==============================================="
 
 # 检查Docker和nvidia-docker
