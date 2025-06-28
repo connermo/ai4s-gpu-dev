@@ -22,7 +22,7 @@ if id "$DEV_USER" &>/dev/null; then
     groupmod -g $DEV_GID $DEV_USER
 else
     echo "Creating user $DEV_USER..."
-    groupadd -g $DEV_GID $DEV_USER
+    getent group $DEV_USER >/dev/null || groupadd -g $DEV_GID $DEV_USER
     useradd -m -s /bin/bash -u $DEV_UID -g $DEV_GID $DEV_USER
     echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 fi
