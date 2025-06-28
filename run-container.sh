@@ -51,8 +51,8 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # 构建镜像
-echo "构建 Docker 镜像..."
-docker build -t gpu-dev-env:latest .
+# echo "构建 Docker 镜像..."
+# docker build -t gpu-dev-env:latest .
 
 # 运行容器
 echo "启动容器..."
@@ -76,7 +76,7 @@ docker run -d \
     -v "/tmp/.X11-unix:/tmp/.X11-unix:rw" \
     --shm-size=2g \
     --restart unless-stopped \
-    gpu-dev-env:latest
+    connermo/ai4s-gpu-dev:latest
 
 echo ""
 echo "容器启动完成！"
