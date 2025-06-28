@@ -51,6 +51,22 @@ fi
 # 设置用户密码
 echo "$DEV_USER:$DEV_PASSWORD" | chpasswd
 
+# 如果不是devuser，复制配置文件
+if [ "$DEV_USER" != "devuser" ]; then
+    echo "Copying configuration files from devuser to $DEV_USER..."
+    # 复制配置文件和目录
+    cp -r /home/devuser/.bashrc /home/$DEV_USER/
+    cp -r /home/devuser/.profile /home/$DEV_USER/
+    cp -r /home/devuser/.bash_logout /home/$DEV_USER/ 2>/dev/null || true
+    cp -r /home/devuser/.config /home/$DEV_USER/
+    cp -r /home/devuser/.jupyter /home/$DEV_USER/
+    cp -r /home/devuser/.ssh /home/$DEV_USER/
+    cp -r /home/devuser/scripts /home/$DEV_USER/
+    
+    # 确保权限正确
+    chown -R $DEV_UID:$DEV_GID /home/$DEV_USER
+fi
+
 # 确保工作目录存在并设置权限
 mkdir -p $WORKSPACE_DIR/{projects,data,models,notebooks,tensorboard_logs}
 chown -R $DEV_UID:$DEV_GID $WORKSPACE_DIR
