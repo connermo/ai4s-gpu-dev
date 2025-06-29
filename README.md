@@ -257,34 +257,101 @@ print("\n=== 测试完成 ===")
 ### 容器无法启动
 
 ```bash
-# 查看容器日志
-docker logs gpu-dev-用户名
+# 查看容器日志（替换为实际用户名，如：gpu-dev-devuser）
+docker logs gpu-dev-<用户名>
 
 # 检查GPU驱动
 nvidia-smi
 
-# 检查Docker GPU支持
-docker run --rm --gpus all nvidia/cuda:11.8-base nvidia-smi
+# 检查Docker GPU支持（使用当前CUDA版本）
+docker run --rm --gpus all nvidia/cuda:12.4.1-base nvidia-smi
+
+# 检查Docker是否正常运行
+docker --version
+docker ps
 ```
 
 ### 服务无法访问
 
 ```bash
-# 检查端口占用
+# 检查端口占用（Linux/macOS）
 netstat -tlnp | grep :8080
+# 或者使用ss命令
+ss -tlnp | grep :8080
 
-# 进入容器调试
-docker exec -it gpu-dev-用户名 bash
+# Windows检查端口占用
+netstat -ano | findstr :8080
 
-# 重启服务
-docker exec gpu-dev-用户名 supervisorctl restart all
+# 检查容器是否运行
+docker ps | grep gpu-dev
+
+# 进入容器调试（替换为实际容器名）
+docker exec -it gpu-dev-<用户名> bash
+
+# 在容器内检查服务状态
+docker exec gpu-dev-<用户名> supervisorctl status
+
+# 重启特定服务
+docker exec gpu-dev-<用户名> supervisorctl restart code-server
+docker exec gpu-dev-<用户名> supervisorctl restart jupyter
+docker exec gpu-dev-<用户名> supervisorctl restart tensorboard
+
+# 重启所有服务
+docker exec gpu-dev-<用户名> supervisorctl restart all
 ```
 
 ### 权限问题
 
 ```bash
-# 修复工作目录权限
+# 修复工作目录权限（替换为实际工作目录路径）
+sudo chown -R $(id -u):$(id -g) <工作目录路径>
+
+# 示例：
 sudo chown -R $(id -u):$(id -g) ./workspace
+sudo chown -R $(id -u):$(id -g) ./data/user1
+sudo chown -R $(id -u):$(id -g) ./shared
+sudo chown -R $(id -u):$(id -g) ./tmp
+
+# 检查目录权限
+ls -la ./workspace
+ls -la ./shared
+ls -la ./tmp
+```
+
+### 共享内存不足
+
+```bash
+# 检查容器内共享内存使用情况
+docker exec gpu-dev-<用户名> df -h /dev/shm
+
+# 如果出现 "No space left on device" 错误
+# 可以尝试增加共享内存大小（在启动时添加）
+--shm-size=64g  # 根据需要调整大小
+```
+
+### 常见错误及解决方案
+
+**错误：`docker: Error response from daemon: could not select device driver "nvidia"`**
+```bash
+# 解决方案：安装或重新安装NVIDIA Container Toolkit
+# Ubuntu/Debian:
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+   && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
+   && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+sudo apt-get update
+sudo apt-get install -y nvidia-docker2
+sudo systemctl restart docker
+```
+
+**错误：端口已被占用**
+```bash
+# 查找占用端口的进程
+sudo lsof -i :8080
+# 终止占用端口的进程
+sudo kill -9 <PID>
+# 或使用不同的端口前缀启动
+./run-container.sh myuser password ./workspace 81  # 使用81xx端口
 ```
 
 ## 📝 开发建议
