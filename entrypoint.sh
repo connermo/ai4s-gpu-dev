@@ -100,6 +100,21 @@ else
     echo "Warning: nvidia-smi not found. GPU might not be available."
 fi
 
+# 获取宿主机IP地址
+# 在容器内，尝试获取默认网关IP（通常是宿主机IP）
+HOST_IP=$(ip route | grep '^default' | awk '{print $3}' 2>/dev/null | head -n1)
+
+# 如果获取不到网关IP，尝试从/etc/hosts获取
+if [ -z "$HOST_IP" ]; then
+    HOST_IP=$(getent hosts host.docker.internal 2>/dev/null | awk '{print $1}')
+fi
+
+# 如果还是获取不到，使用占位符
+if [ -z "$HOST_IP" ]; then
+    HOST_IP="<宿主机IP>"
+    echo "提示: 请将下方访问地址中的'<宿主机IP>'替换为实际的宿主机IP地址"
+fi
+
 # 显示访问信息
 echo ""
 echo "==============================================="
@@ -111,14 +126,14 @@ echo "  Shared (RO): /home/$DEV_USER/shared-ro"
 echo "  Shared (RW): /home/$DEV_USER/shared-rw"
 echo ""
 echo "Access URLs:"
-echo "  VSCode:      http://localhost:8080"
+echo "  VSCode:      http://$HOST_IP:8080"
 if [ "$ENABLE_JUPYTER" = "true" ]; then
-echo "  Jupyter Lab: http://localhost:8888"
+echo "  Jupyter Lab: http://$HOST_IP:8888"
 fi
 if [ "$ENABLE_TENSORBOARD" = "true" ]; then
-echo "  TensorBoard: http://localhost:6006"
+echo "  TensorBoard: http://$HOST_IP:6006"
 fi
-echo "  SSH:         ssh -p 22 $DEV_USER@localhost"
+echo "  SSH:         ssh -p 22 $DEV_USER@$HOST_IP"
 echo ""
 echo "Login credentials:"
 echo "  Username: $DEV_USER"
