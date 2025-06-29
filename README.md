@@ -38,7 +38,26 @@ chmod +x run-container.sh
 
 # 启动自定义用户环境
 ./run-container.sh myuser mypassword ./my-workspace 90
+
+# 启动带内网镜像源的环境
+./run-container.sh myuser mypass ./workspace 80 \
+    "http://internal-pypi.com/simple/" \
+    "internal-pypi.com" \
+    "http://internal-apt.com/ubuntu" \
+    "http://internal-npm.com/" \
+    "internal-npm.com"
 ```
+
+**脚本参数说明：**
+- 参数1：用户名（默认：devuser）
+- 参数2：密码（默认：changeme）
+- 参数3：工作目录（默认：./workspace）
+- 参数4：端口前缀（默认：80，对应8080、8888、8006、8022端口）
+- 参数5：pip内网镜像源URL（可选）
+- 参数6：pip可信主机（可选）
+- 参数7：apt内网镜像源URL（可选）
+- 参数8：npm内网注册表URL（可选）
+- 参数9：npm可信主机（可选）
 
 ### 方法2: 使用Docker命令
 
@@ -101,6 +120,11 @@ docker-compose down
 | `ENABLE_JUPYTER` | true | 是否启用Jupyter Lab |
 | `ENABLE_TENSORBOARD` | true | 是否启用TensorBoard |
 | `WORKSPACE_DIR` | /home/用户名/workspace | 工作目录路径 |
+| `APT_MIRROR_URL` | - | apt内网镜像源地址（可选） |
+| `NPM_REGISTRY_URL` | - | npm内网注册表地址（可选） |
+| `NPM_TRUSTED_HOST` | - | npm可信主机（可选） |
+| `PIP_INDEX_URL` | - | pip内网镜像源地址（可选） |
+| `PIP_TRUSTED_HOST` | - | pip可信主机（可选） |
 
 ## 📁 目录结构
 
@@ -149,6 +173,101 @@ gpu-docker/
 # 用户1访问：http://<宿主机IP>:8080
 # 用户2访问：http://<宿主机IP>:8180
 ```
+
+### 配置内网镜像源
+
+```bash
+# 使用便捷脚本配置所有内网镜像源
+./run-container.sh myuser mypass ./workspace 80 \
+    "http://your-internal-pypi.com/simple/" \
+    "your-internal-pypi.com" \
+    "http://your-internal-apt.com/ubuntu" \
+    "http://your-internal-npm.com/" \
+    "your-internal-npm.com"
+
+# 只配置部分镜像源（传空字符串跳过不需要的参数）
+./run-container.sh myuser mypass ./workspace 80 \
+    "http://your-internal-pypi.com/simple/" \
+    "your-internal-pypi.com" \
+    "" \
+    "http://your-internal-npm.com/" \
+    "your-internal-npm.com"
+
+# 使用Docker命令配置所有内网镜像源
+docker run -d \
+    --name gpu-dev-myuser \
+    --gpus all \
+    -p 8080:8080 \
+    -p 8888:8888 \
+    -e DEV_USER=myuser \
+    -e DEV_PASSWORD=mypass \
+    -e APT_MIRROR_URL=http://your-internal-apt.com/ubuntu \
+    -e NPM_REGISTRY_URL=http://your-internal-npm.com/ \
+    -e NPM_TRUSTED_HOST=your-internal-npm.com \
+    -e PIP_INDEX_URL=http://your-internal-pypi.com/simple/ \
+    -e PIP_TRUSTED_HOST=your-internal-pypi.com \
+    -v ./workspace:/home/myuser/workspace:rw \
+    --shm-size=32g \
+    connermo/ai4s-gpu-dev:latest
+
+# 使用Docker Compose配置
+# 在docker-compose.yml中取消注释并修改以下行：
+# - APT_MIRROR_URL=http://your-internal-apt.com/ubuntu
+# - NPM_REGISTRY_URL=http://your-internal-npm.com/
+# - NPM_TRUSTED_HOST=your-internal-npm.com
+# - PIP_INDEX_URL=http://your-internal-pypi.com/simple/
+# - PIP_TRUSTED_HOST=your-internal-pypi.com
+```
+
+### 验证内网镜像源配置
+
+```bash
+# 进入容器验证配置
+docker exec -it gpu-dev-myuser bash
+
+# 验证APT配置
+cat /etc/apt/sources.list
+apt update  # 测试apt源可用性
+
+# 验证NPM配置
+npm config list | grep registry
+npm config get registry
+npm info express  # 测试npm源可用性
+
+# 验证PIP配置
+pip config list
+cat ~/.pip/pip.conf
+pip install requests  # 测试pip源可用性
+```
+
+### 内网镜像源地址格式说明
+
+**APT镜像源：**
+- 格式：`http://your-mirror-host/ubuntu`
+- 常见示例：
+  - 阿里云：`http://mirrors.aliyun.com/ubuntu`
+  - 清华大学：`http://mirrors.tuna.tsinghua.edu.cn/ubuntu`
+  - 网易：`http://mirrors.163.com/ubuntu`
+
+**NPM注册表：**
+- 格式：`http://your-npm-registry/`
+- 常见示例：
+  - 淘宝：`https://registry.npmmirror.com/`
+  - 腾讯：`http://mirrors.cloud.tencent.com/npm/`
+  - 华为：`https://mirrors.huaweicloud.com/repository/npm/`
+
+**PIP镜像源：**
+- 格式：`http://your-pypi-mirror/simple/`
+- 常见示例：
+  - 阿里云：`http://mirrors.aliyun.com/pypi/simple/`
+  - 清华大学：`https://pypi.tuna.tsinghua.edu.cn/simple/`
+  - 豆瓣：`http://pypi.douban.com/simple/`
+
+**注意事项：**
+1. 如果使用HTTPS镜像源但证书有问题，可以通过trusted-host参数跳过证书验证
+2. APT镜像源配置会在容器启动时自动更新包列表
+3. NPM和PIP配置是用户级别的，不会影响系统级安装
+4. 内网环境建议同时配置所有三种镜像源以获得最佳体验
 
 ### GPU测试
 

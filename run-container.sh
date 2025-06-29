@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # GPU Docker 开发环境启动脚本
-# 用法: ./run-container.sh [用户名] [密码] [工作目录] [端口前缀]
+# 用法: ./run-container.sh [用户名] [密码] [工作目录] [端口前缀] [pip镜像源URL] [pip可信主机] [apt镜像源URL] [npm注册表URL] [npm可信主机]
 
 set -e
 
@@ -16,6 +16,11 @@ DEV_USER=${1:-$DEFAULT_USER}
 DEV_PASSWORD=${2:-$DEFAULT_PASSWORD}
 WORKSPACE_DIR=${3:-$DEFAULT_WORKSPACE_DIR}
 PORT_PREFIX=${4:-$DEFAULT_PORT_PREFIX}
+PIP_INDEX_URL=${5:-""}
+PIP_TRUSTED_HOST=${6:-""}
+APT_MIRROR_URL=${7:-""}
+NPM_REGISTRY_URL=${8:-""}
+NPM_TRUSTED_HOST=${9:-""}
 
 # 构造端口号
 CODE_SERVER_PORT="${PORT_PREFIX}80"
@@ -73,6 +78,12 @@ echo "  VSCode:      http://$HOST_IP:$CODE_SERVER_PORT"
 echo "  Jupyter:     http://$HOST_IP:$JUPYTER_PORT"
 echo "  TensorBoard: http://$HOST_IP:$TENSORBOARD_PORT"
 echo "  SSH:         ssh -p $SSH_PORT $DEV_USER@$HOST_IP"
+if [ -n "$APT_MIRROR_URL" ] || [ -n "$NPM_REGISTRY_URL" ] || [ -n "$PIP_INDEX_URL" ]; then
+echo "内网镜像源配置:"
+[ -n "$APT_MIRROR_URL" ] && echo "  APT Mirror:   $APT_MIRROR_URL"
+[ -n "$NPM_REGISTRY_URL" ] && echo "  NPM Registry: $NPM_REGISTRY_URL" && [ -n "$NPM_TRUSTED_HOST" ] && echo "  NPM Host:     $NPM_TRUSTED_HOST"
+[ -n "$PIP_INDEX_URL" ] && echo "  PIP Index:    $PIP_INDEX_URL" && [ -n "$PIP_TRUSTED_HOST" ] && echo "  PIP Host:     $PIP_TRUSTED_HOST"
+fi
 echo "==============================================="
 
 # 检查Docker和nvidia-docker
@@ -103,6 +114,11 @@ docker run -d \
     -e "ENABLE_JUPYTER=true" \
     -e "ENABLE_TENSORBOARD=true" \
     -e "WORKSPACE_DIR=/home/$DEV_USER/workspace" \
+    $([ -n "$APT_MIRROR_URL" ] && echo "-e APT_MIRROR_URL=$APT_MIRROR_URL") \
+    $([ -n "$NPM_REGISTRY_URL" ] && echo "-e NPM_REGISTRY_URL=$NPM_REGISTRY_URL") \
+    $([ -n "$NPM_TRUSTED_HOST" ] && echo "-e NPM_TRUSTED_HOST=$NPM_TRUSTED_HOST") \
+    $([ -n "$PIP_INDEX_URL" ] && echo "-e PIP_INDEX_URL=$PIP_INDEX_URL") \
+    $([ -n "$PIP_TRUSTED_HOST" ] && echo "-e PIP_TRUSTED_HOST=$PIP_TRUSTED_HOST") \
     -v "$(realpath $WORKSPACE_DIR):/home/$DEV_USER/workspace:rw" \
     -v "$(realpath ./shared):/home/$DEV_USER/shared-ro:ro" \
     -v "$(realpath ./tmp):/home/$DEV_USER/shared-rw:rw" \

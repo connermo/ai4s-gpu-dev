@@ -85,6 +85,80 @@ chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/shared-rw
 chmod 755 /home/$DEV_USER/shared-ro
 chmod 755 /home/$DEV_USER/shared-rw
 
+# 配置apt内网源
+if [ -n "$APT_MIRROR_URL" ]; then
+    echo "Configuring apt with internal mirror: $APT_MIRROR_URL"
+    
+    # 备份原始sources.list
+    cp /etc/apt/sources.list /etc/apt/sources.list.backup
+    
+    # 创建新的sources.list
+    cat > /etc/apt/sources.list << EOF
+# Internal APT Mirror
+deb $APT_MIRROR_URL jammy main restricted universe multiverse
+deb $APT_MIRROR_URL jammy-updates main restricted universe multiverse
+deb $APT_MIRROR_URL jammy-backports main restricted universe multiverse
+deb $APT_MIRROR_URL jammy-security main restricted universe multiverse
+EOF
+    
+    echo "APT sources.list updated:"
+    cat /etc/apt/sources.list
+    
+    # 更新apt缓存
+    apt-get update || echo "Warning: apt update failed, continuing..."
+else
+    echo "No internal apt mirror configured. Using default Ubuntu repositories."
+fi
+
+# 配置npm内网源
+if [ -n "$NPM_REGISTRY_URL" ]; then
+    echo "Configuring npm with internal registry: $NPM_REGISTRY_URL"
+    
+    # 为用户配置npm
+    su - $DEV_USER -c "npm config set registry $NPM_REGISTRY_URL"
+    
+    # 如果指定了可信主机，配置证书验证
+    if [ -n "$NPM_TRUSTED_HOST" ]; then
+        su - $DEV_USER -c "npm config set strict-ssl false"
+        echo "NPM SSL verification disabled for internal registry"
+    fi
+    
+    # 显示npm配置
+    echo "NPM configuration:"
+    su - $DEV_USER -c "npm config list | grep registry"
+else
+    echo "No internal npm registry configured. Using default npm registry."
+fi
+
+# 配置pip内网镜像源
+if [ -n "$PIP_INDEX_URL" ]; then
+    echo "Configuring pip with internal mirror: $PIP_INDEX_URL"
+    
+    # 创建pip配置目录
+    mkdir -p /home/$DEV_USER/.pip
+    
+    # 创建pip.conf配置文件
+    cat > /home/$DEV_USER/.pip/pip.conf << EOF
+[global]
+index-url = $PIP_INDEX_URL
+EOF
+    
+    # 如果指定了可信主机，添加到配置
+    if [ -n "$PIP_TRUSTED_HOST" ]; then
+        echo "trusted-host = $PIP_TRUSTED_HOST" >> /home/$DEV_USER/.pip/pip.conf
+    fi
+    
+    # 设置权限
+    chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/.pip
+    chmod 755 /home/$DEV_USER/.pip
+    chmod 644 /home/$DEV_USER/.pip/pip.conf
+    
+    echo "Pip configuration created:"
+    cat /home/$DEV_USER/.pip/pip.conf
+else
+    echo "No internal pip mirror configured. Using default PyPI."
+fi
+
 # 确保用户家目录权限正确
 chown -R $DEV_UID:$DEV_GID /home/$DEV_USER
 

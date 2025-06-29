@@ -19,6 +19,12 @@ services:
       - ENABLE_JUPYTER=true
       - ENABLE_TENSORBOARD=true
       - WORKSPACE_DIR=/home/user1/workspace
+      # 内网镜像源配置（可选）
+      # - APT_MIRROR_URL=http://your-internal-apt-mirror/ubuntu
+      # - NPM_REGISTRY_URL=http://your-internal-npm-registry/
+      # - NPM_TRUSTED_HOST=your-internal-npm-registry
+      # - PIP_INDEX_URL=http://your-internal-pypi-server/simple/
+      # - PIP_TRUSTED_HOST=your-internal-pypi-server
     volumes:
       - ./data/user1:/home/user1/workspace:rw
       - ./shared:/home/user1/shared-ro:ro
@@ -52,6 +58,12 @@ services:
       - ENABLE_JUPYTER=true
       - ENABLE_TENSORBOARD=false
       - WORKSPACE_DIR=/home/user2/workspace
+      # 内网镜像源配置（可选）
+      # - APT_MIRROR_URL=http://your-internal-apt-mirror/ubuntu
+      # - NPM_REGISTRY_URL=http://your-internal-npm-registry/
+      # - NPM_TRUSTED_HOST=your-internal-npm-registry
+      # - PIP_INDEX_URL=http://your-internal-pypi-server/simple/
+      # - PIP_TRUSTED_HOST=your-internal-pypi-server
     volumes:
       - ./data/user2:/home/user2/workspace:rw
       - ./shared:/home/user2/shared-ro:ro
