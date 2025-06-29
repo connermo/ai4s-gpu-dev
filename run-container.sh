@@ -107,7 +107,7 @@ docker run -d \
     -v "$(realpath ./shared):/home/$DEV_USER/shared-ro:ro" \
     -v "$(realpath ./tmp):/home/$DEV_USER/shared-rw:rw" \
     -v "/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-    --shm-size=8g \
+    --shm-size=32g \
     --restart unless-stopped \
     connermo/ai4s-gpu-dev:latest
 
