@@ -21,7 +21,8 @@ services:
       - WORKSPACE_DIR=/home/user1/workspace
     volumes:
       - ./data/user1:/home/user1/workspace:rw
-      - ./shared:/shared:ro
+      - ./shared:/home/user1/shared-ro:ro
+      - ./tmp:/home/user1/shared-rw:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     deploy:
       resources:
@@ -52,7 +53,8 @@ services:
       - WORKSPACE_DIR=/home/user2/workspace
     volumes:
       - ./data/user2:/home/user2/workspace:rw
-      - ./shared:/shared:ro
+      - ./shared:/home/user2/shared-ro:ro
+      - ./tmp:/home/user2/shared-rw:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     deploy:
       resources:

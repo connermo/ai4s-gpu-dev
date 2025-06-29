@@ -54,6 +54,7 @@ fi
 # 创建工作目录
 mkdir -p "$WORKSPACE_DIR"/{projects,data,models,notebooks,tensorboard_logs}
 mkdir -p ./shared
+mkdir -p ./tmp
 
 echo "==============================================="
 echo "启动 GPU Docker 开发环境"
@@ -62,6 +63,11 @@ echo "用户名: $DEV_USER"
 echo "密码: $DEV_PASSWORD"
 echo "工作目录: $WORKSPACE_DIR"
 echo "宿主机IP: $HOST_IP"
+echo ""
+echo "共享目录映射:"
+echo "  $WORKSPACE_DIR -> /home/$DEV_USER/workspace (读写)"
+echo "  ./shared -> /home/$DEV_USER/shared-ro (只读)"
+echo "  ./tmp -> /home/$DEV_USER/shared-rw (读写)"
 echo "端口配置:"
 echo "  VSCode:      http://$HOST_IP:$CODE_SERVER_PORT"
 echo "  Jupyter:     http://$HOST_IP:$JUPYTER_PORT"
@@ -98,7 +104,8 @@ docker run -d \
     -e "ENABLE_TENSORBOARD=true" \
     -e "WORKSPACE_DIR=/home/$DEV_USER/workspace" \
     -v "$(realpath $WORKSPACE_DIR):/home/$DEV_USER/workspace:rw" \
-    -v "$(realpath ./shared):/shared:ro" \
+    -v "$(realpath ./shared):/home/$DEV_USER/shared-ro:ro" \
+    -v "$(realpath ./tmp):/home/$DEV_USER/shared-rw:rw" \
     -v "/tmp/.X11-unix:/tmp/.X11-unix:rw" \
     --shm-size=2g \
     --restart unless-stopped \

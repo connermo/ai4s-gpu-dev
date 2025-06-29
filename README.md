@@ -78,12 +78,17 @@ docker-compose down
 
 启动后可以通过以下方式访问各项服务：
 
+> **获取宿主机IP地址**：
+> - Linux/macOS: `hostname -I | awk '{print $1}'` 或 `ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d'/' -f1 | head -n1`
+> - Windows: `ipconfig` 查看IPv4地址
+> - 本地开发可以使用 `localhost` 或 `127.0.0.1`
+
 | 服务 | 默认端口 | 访问地址 |
 |------|---------|----------|
-| VSCode Server | 8080 | http://localhost:8080 |
-| Jupyter Lab | 8888 | http://localhost:8888 |
-| TensorBoard | 6006 | http://localhost:6006 |
-| SSH | 22 | `ssh -p 22 用户名@localhost` |
+| VSCode Server | 8080 | http://`<宿主机IP>`:8080 |
+| Jupyter Lab | 8888 | http://`<宿主机IP>`:8888 |
+| TensorBoard | 6006 | http://`<宿主机IP>`:6006 |
+| SSH | 22 | `ssh -p 22 用户名@<宿主机IP>` |
 
 ## ⚙️ 环境变量配置
 
@@ -126,10 +131,10 @@ gpu-docker/
 ./run-container.sh alice password123 ./alice-workspace 90
 
 # 访问地址：
-# VSCode: http://localhost:9080
-# Jupyter: http://localhost:9088
-# TensorBoard: http://localhost:9006
-# SSH: ssh -p 9022 alice@localhost
+# VSCode: http://<宿主机IP>:9080
+# Jupyter: http://<宿主机IP>:9088
+# TensorBoard: http://<宿主机IP>:9006
+# SSH: ssh -p 9022 alice@<宿主机IP>
 ```
 
 ### 多用户并行使用
@@ -141,8 +146,8 @@ gpu-docker/
 # 启动用户2  
 ./run-container.sh user2 pass2 ./data/user2 81
 
-# 用户1访问：http://localhost:8080
-# 用户2访问：http://localhost:8180
+# 用户1访问：http://<宿主机IP>:8080
+# 用户2访问：http://<宿主机IP>:8180
 ```
 
 ### GPU测试

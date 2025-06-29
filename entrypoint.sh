@@ -77,6 +77,14 @@ chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/.local
 mkdir -p $WORKSPACE_DIR/{projects,data,models,notebooks,tensorboard_logs}
 chown -R $DEV_UID:$DEV_GID $WORKSPACE_DIR
 
+# 确保共享目录存在并设置权限
+mkdir -p /home/$DEV_USER/shared-ro
+mkdir -p /home/$DEV_USER/shared-rw
+chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/shared-ro
+chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/shared-rw
+chmod 755 /home/$DEV_USER/shared-ro
+chmod 755 /home/$DEV_USER/shared-rw
+
 # 确保用户家目录权限正确
 chown -R $DEV_UID:$DEV_GID /home/$DEV_USER
 
@@ -97,6 +105,11 @@ echo ""
 echo "==============================================="
 echo "GPU Docker Development Environment Started!"
 echo "==============================================="
+echo "Shared Directories:"
+echo "  Workspace:   $WORKSPACE_DIR"
+echo "  Shared (RO): /home/$DEV_USER/shared-ro"
+echo "  Shared (RW): /home/$DEV_USER/shared-rw"
+echo ""
 echo "Access URLs:"
 echo "  VSCode:      http://localhost:8080"
 if [ "$ENABLE_JUPYTER" = "true" ]; then
