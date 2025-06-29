@@ -31,6 +31,7 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    shm_size: '8gb'
     restart: unless-stopped
 
   # 用户2的开发环境
@@ -63,6 +64,7 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    shm_size: '8gb'
     restart: unless-stopped
 
 volumes:

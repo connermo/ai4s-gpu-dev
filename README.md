@@ -60,7 +60,7 @@ docker run -d \
     -e DEV_GID=$(id -g) \
     -v ./workspace:/home/myuser/workspace:rw \
     -v ./shared:/shared:ro \
-    --shm-size=2g \
+    --shm-size=8g \
     gpu-dev-env:latest
 ```
 
