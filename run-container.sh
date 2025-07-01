@@ -32,6 +32,26 @@ SSH_PORT="${PORT_PREFIX}22"
 CURRENT_UID=$(id -u)
 CURRENT_GID=$(id -g)
 
+# 如果是root用户，使用安全的默认值避免冲突
+if [ "$CURRENT_UID" -eq 0 ]; then
+    echo "检测到root用户，使用安全的默认UID/GID..."
+    # 查找可用的UID，从1000开始（避免系统保留ID）
+    SAFE_UID=1000
+    while id -u $SAFE_UID &>/dev/null; do
+        SAFE_UID=$((SAFE_UID+1))
+    done
+    
+    # 查找可用的GID，从1000开始
+    SAFE_GID=1000
+    while getent group $SAFE_GID &>/dev/null; do
+        SAFE_GID=$((SAFE_GID+1))
+    done
+    
+    CURRENT_UID=$SAFE_UID
+    CURRENT_GID=$SAFE_GID
+    echo "使用安全的UID: $CURRENT_UID, GID: $CURRENT_GID"
+fi
+
 # 获取宿主机IP地址
 # 优先使用hostname -I获取第一个非回环IP地址
 HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}' 2>/dev/null)
