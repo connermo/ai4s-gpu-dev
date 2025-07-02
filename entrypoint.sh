@@ -21,6 +21,8 @@ if id "$DEV_USER" &>/dev/null; then
     echo "User $DEV_USER already exists, updating UID/GID..."
     usermod -u $DEV_UID $DEV_USER
     groupmod -g $DEV_GID $DEV_USER
+    # 获取实际使用的GID
+    ACTUAL_GID=$(id -g $DEV_USER)
 else
     echo "Creating user $DEV_USER..."
     
@@ -44,8 +46,26 @@ else
         echo "Using GID $DEV_GID instead of $ORIGINAL_GID"
     fi
     
-    getent group $DEV_USER >/dev/null || groupadd -g $DEV_GID $DEV_USER
-    useradd -m -s /bin/bash -u $DEV_UID -g $DEV_GID $DEV_USER
+    # 创建组，如果组名已存在则跳过，如果GID冲突则使用现有组
+    if ! getent group $DEV_USER >/dev/null; then
+        if getent group $DEV_GID >/dev/null; then
+            # GID已存在，使用现有组
+            EXISTING_GROUP=$(getent group $DEV_GID | cut -d: -f1)
+            echo "GID $DEV_GID already exists with group '$EXISTING_GROUP', will use it for user $DEV_USER"
+            DEV_GROUP=$EXISTING_GROUP
+        else
+            # 创建新组
+            groupadd -g $DEV_GID $DEV_USER
+            DEV_GROUP=$DEV_USER
+        fi
+    else
+        DEV_GROUP=$DEV_USER
+        echo "Group $DEV_USER already exists"
+    fi
+    useradd -m -s /bin/bash -u $DEV_UID -g $DEV_GROUP $DEV_USER
+    
+    # 获取实际使用的GID
+    ACTUAL_GID=$(id -g $DEV_USER)
     echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 fi
 
@@ -65,17 +85,17 @@ if [ "$DEV_USER" != "devuser" ]; then
     cp -r /home/devuser/scripts /home/$DEV_USER/
     
     # 确保权限正确
-    chown -R $DEV_UID:$DEV_GID /home/$DEV_USER 2>/dev/null || echo "警告: 无法设置用户目录所有权，继续执行..."
+    chown -R $DEV_UID:$ACTUAL_GID /home/$DEV_USER 2>/dev/null || echo "警告: 无法设置用户目录所有权，继续执行..."
 fi
 
 # 确保用户设置目录存在并优化VSCode配置
 mkdir -p /home/$DEV_USER/.local/share/code-server/User
 echo '{"markdown.preview.openMarkdownLinks": "inPreview","markdown.preview.scrollPreviewWithEditor": true,"markdown.preview.markEditorSelection": true,"workbench.editorAssociations": {"*.md": "default"},"security.workspace.trust.enabled": false}' > /home/$DEV_USER/.local/share/code-server/User/settings.json
-chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/.local 2>/dev/null || echo "警告: 无法设置.local目录所有权，继续执行..."
+chown -R $DEV_UID:$ACTUAL_GID /home/$DEV_USER/.local 2>/dev/null || echo "警告: 无法设置.local目录所有权，继续执行..."
 
 # 确保工作目录存在并设置权限
 mkdir -p $WORKSPACE_DIR/{projects,data,models,notebooks,tensorboard_logs}
-chown -R $DEV_UID:$DEV_GID $WORKSPACE_DIR 2>/dev/null || echo "警告: 无法设置工作目录所有权，继续执行..."
+chown -R $DEV_UID:$ACTUAL_GID $WORKSPACE_DIR 2>/dev/null || echo "警告: 无法设置工作目录所有权，继续执行..."
 
 # 确保共享目录存在并设置权限
 mkdir -p /home/$DEV_USER/shared-ro
@@ -83,10 +103,10 @@ mkdir -p /home/$DEV_USER/shared-rw
 
 # 设置共享目录权限，失败时不终止脚本
 echo "设置共享目录权限..."
-chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/shared-rw 2>/dev/null || echo "警告: 无法设置 shared-rw 所有权，继续执行..."
+chown -R $DEV_UID:$ACTUAL_GID /home/$DEV_USER/shared-rw 2>/dev/null || echo "警告: 无法设置 shared-rw 所有权，继续执行..."
 chmod 777 /home/$DEV_USER/shared-rw 2>/dev/null || echo "警告: 无法设置 shared-rw 权限，继续执行..."
 
-chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/shared-ro 2>/dev/null || echo "警告: 无法设置 shared-ro 所有权，继续执行..."
+chown -R $DEV_UID:$ACTUAL_GID /home/$DEV_USER/shared-ro 2>/dev/null || echo "警告: 无法设置 shared-ro 所有权，继续执行..."
 chmod 777 /home/$DEV_USER/shared-ro 2>/dev/null || echo "警告: 无法设置 shared-ro 权限，继续执行..."
 
 echo "共享目录权限设置完成（如有警告可忽略）"
@@ -155,7 +175,7 @@ EOF
     fi
     
     # 设置权限
-    chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/.pip 2>/dev/null || echo "警告: 无法设置.pip目录所有权，继续执行..."
+    chown -R $DEV_UID:$ACTUAL_GID /home/$DEV_USER/.pip 2>/dev/null || echo "警告: 无法设置.pip目录所有权，继续执行..."
     chmod 755 /home/$DEV_USER/.pip 2>/dev/null || true
     chmod 644 /home/$DEV_USER/.pip/pip.conf 2>/dev/null || true
     
@@ -166,7 +186,7 @@ else
 fi
 
 # 确保用户家目录权限正确
-chown -R $DEV_UID:$DEV_GID /home/$DEV_USER 2>/dev/null || echo "警告: 无法设置用户家目录所有权，继续执行..."
+chown -R $DEV_UID:$ACTUAL_GID /home/$DEV_USER 2>/dev/null || echo "警告: 无法设置用户家目录所有权，继续执行..."
 
 # 创建日志目录
 mkdir -p /var/log/supervisor
@@ -219,7 +239,7 @@ echo "Login credentials:"
 echo "  Username: $DEV_USER"
 echo "  Password: $DEV_PASSWORD"
 echo "  Final UID: $DEV_UID"
-echo "  Final GID: $DEV_GID"
+echo "  Final GID: $ACTUAL_GID"
 echo "==============================================="
 
 # 执行传入的命令
