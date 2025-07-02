@@ -81,6 +81,16 @@ mkdir -p "$WORKSPACE_DIR"/{projects,data,models,notebooks,tensorboard_logs}
 mkdir -p ./shared
 mkdir -p ./tmp
 
+# 确保共享目录权限正确（避免容器内权限冲突）
+if [ -d "./shared" ]; then
+    echo "设置共享目录权限..."
+    chmod 777 ./shared 2>/dev/null || echo "警告: 无法设置共享目录权限，继续执行..."
+    # 如果不是root用户，尝试设置所有权
+    if [ "$CURRENT_UID" -ne 0 ]; then
+        chown "$CURRENT_UID:$CURRENT_GID" ./shared 2>/dev/null || echo "注意: 无法设置共享目录所有权，继续执行..."
+    fi
+fi
+
 echo "==============================================="
 echo "启动 GPU Docker 开发环境"
 echo "==============================================="
@@ -140,7 +150,7 @@ docker run -d \
     $([ -n "$PIP_INDEX_URL" ] && echo "-e PIP_INDEX_URL=$PIP_INDEX_URL") \
     $([ -n "$PIP_TRUSTED_HOST" ] && echo "-e PIP_TRUSTED_HOST=$PIP_TRUSTED_HOST") \
     -v "$(realpath $WORKSPACE_DIR):/home/$DEV_USER/workspace:rw" \
-    -v "$(realpath ./shared):/home/$DEV_USER/shared-ro:ro" \
+    -v "$(realpath ./shared):/home/$DEV_USER/shared-ro:rw" \
     -v "$(realpath ./tmp):/home/$DEV_USER/shared-rw:rw" \
     -v "/tmp/.X11-unix:/tmp/.X11-unix:rw" \
     --shm-size=32g \

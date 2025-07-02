@@ -65,25 +65,31 @@ if [ "$DEV_USER" != "devuser" ]; then
     cp -r /home/devuser/scripts /home/$DEV_USER/
     
     # 确保权限正确
-    chown -R $DEV_UID:$DEV_GID /home/$DEV_USER
+    chown -R $DEV_UID:$DEV_GID /home/$DEV_USER 2>/dev/null || echo "警告: 无法设置用户目录所有权，继续执行..."
 fi
 
 # 确保用户设置目录存在并优化VSCode配置
 mkdir -p /home/$DEV_USER/.local/share/code-server/User
 echo '{"markdown.preview.openMarkdownLinks": "inPreview","markdown.preview.scrollPreviewWithEditor": true,"markdown.preview.markEditorSelection": true,"workbench.editorAssociations": {"*.md": "default"},"security.workspace.trust.enabled": false}' > /home/$DEV_USER/.local/share/code-server/User/settings.json
-chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/.local
+chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/.local 2>/dev/null || echo "警告: 无法设置.local目录所有权，继续执行..."
 
 # 确保工作目录存在并设置权限
 mkdir -p $WORKSPACE_DIR/{projects,data,models,notebooks,tensorboard_logs}
-chown -R $DEV_UID:$DEV_GID $WORKSPACE_DIR
+chown -R $DEV_UID:$DEV_GID $WORKSPACE_DIR 2>/dev/null || echo "警告: 无法设置工作目录所有权，继续执行..."
 
 # 确保共享目录存在并设置权限
 mkdir -p /home/$DEV_USER/shared-ro
 mkdir -p /home/$DEV_USER/shared-rw
-chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/shared-ro
-chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/shared-rw
-chmod 755 /home/$DEV_USER/shared-ro
-chmod 755 /home/$DEV_USER/shared-rw
+
+# 设置共享目录权限，失败时不终止脚本
+echo "设置共享目录权限..."
+chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/shared-rw 2>/dev/null || echo "警告: 无法设置 shared-rw 所有权，继续执行..."
+chmod 777 /home/$DEV_USER/shared-rw 2>/dev/null || echo "警告: 无法设置 shared-rw 权限，继续执行..."
+
+chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/shared-ro 2>/dev/null || echo "警告: 无法设置 shared-ro 所有权，继续执行..."
+chmod 777 /home/$DEV_USER/shared-ro 2>/dev/null || echo "警告: 无法设置 shared-ro 权限，继续执行..."
+
+echo "共享目录权限设置完成（如有警告可忽略）"
 
 # 配置apt内网源
 if [ -n "$APT_MIRROR_URL" ]; then
@@ -149,9 +155,9 @@ EOF
     fi
     
     # 设置权限
-    chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/.pip
-    chmod 755 /home/$DEV_USER/.pip
-    chmod 644 /home/$DEV_USER/.pip/pip.conf
+    chown -R $DEV_UID:$DEV_GID /home/$DEV_USER/.pip 2>/dev/null || echo "警告: 无法设置.pip目录所有权，继续执行..."
+    chmod 755 /home/$DEV_USER/.pip 2>/dev/null || true
+    chmod 644 /home/$DEV_USER/.pip/pip.conf 2>/dev/null || true
     
     echo "Pip configuration created:"
     cat /home/$DEV_USER/.pip/pip.conf
@@ -160,11 +166,11 @@ else
 fi
 
 # 确保用户家目录权限正确
-chown -R $DEV_UID:$DEV_GID /home/$DEV_USER
+chown -R $DEV_UID:$DEV_GID /home/$DEV_USER 2>/dev/null || echo "警告: 无法设置用户家目录所有权，继续执行..."
 
 # 创建日志目录
 mkdir -p /var/log/supervisor
-chmod 755 /var/log/supervisor
+chmod 755 /var/log/supervisor 2>/dev/null || echo "警告: 无法设置日志目录权限，继续执行..."
 
 # 检查GPU是否可用
 if command -v nvidia-smi &> /dev/null; then
