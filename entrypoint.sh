@@ -242,5 +242,19 @@ echo "  Final UID: $DEV_UID"
 echo "  Final GID: $ACTUAL_GID"
 echo "==============================================="
 
+# 生成 Jupyter 密码哈希
+JUPYTER_HASH=$(python3 -c "from notebook.auth import passwd; print(passwd('$DEV_PASSWORD'))")
+
+# 配置 Jupyter
+cat > /home/$DEV_USER/.jupyter/jupyter_lab_config.py << EOF
+c.ServerApp.ip = '0.0.0.0'
+c.ServerApp.port = 8888
+c.ServerApp.open_browser = False
+c.ServerApp.token = ''
+c.ServerApp.password = u'$JUPYTER_HASH'
+c.ServerApp.allow_origin = '*'
+c.ServerApp.allow_root = True
+EOF
+
 # 执行传入的命令
 exec "$@" 
